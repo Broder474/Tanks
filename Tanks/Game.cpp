@@ -15,7 +15,8 @@ Game::Game(int cells_count): cells_count(cells_count), player(rand() % cells_cou
     tex_health = IMG_LoadTexture(ren, "images/health.png");
     SDL_SetTextureAlphaMod(tex_health, 128);
     tex_projectile = IMG_LoadTexture(ren, "images/projectile.png");
-    
+    tex_scrap = IMG_LoadTexture(ren, "images/scrap.png");
+
     cells = new int* [cells_count];
     for (int i = 0; i < cells_count; i++)
     {
@@ -47,7 +48,6 @@ Game::Game(int cells_count): cells_count(cells_count), player(rand() % cells_cou
         enemies.push_back({x, y});
     }
     
-
     isRunned = true;
 }
 
@@ -74,41 +74,20 @@ void Game::handleEvents()
         moveTankX(player, CELL_PLAYER, -1);
     else if (keys[SDL_SCANCODE_D])
         moveTankX(player, CELL_PLAYER, 1);
-    else if (keys[SDL_SCANCODE_SPACE])
+
+    // player tank shooting
+    if (keys[SDL_SCANCODE_SPACE])
         tankFire(player);
 
-    // update flying projectiles
-    for (auto projectile = projectiles.begin(); projectile != projectiles.end(); projectile++)
+    // projectiles moving
+    for (auto& projectile : projectiles)
     {
-        if (projectile->getNextMove() > SDL_GetTicks64())
-            return;
-        // move projectile
-        projectile->move();
-
-        int x = projectile->getX(), y = projectile->getY();
-
-        // delete projectile if it left the map
-        if (x < 0 || x > cells_count - 1 || y < 0 || y > cells_count - 1)
-        {
-            projectiles.erase(projectile);
-            break;
-        }
-
-        if (x == player.getX() && y == player.getY()) // collision with player tank
-        {
-            health--;
-            projectiles.erase(projectile);
-        }
-        else
-            for (auto enemy = enemies.begin(); enemy != enemies.end(); enemy++)
-                if (x == enemy->getX() && y == enemy->getY()) // collision with enemy tank
-                {
-                    enemies.erase(enemy);
-                    cells[x][y] = CELL_SCRAP;
-                    projectiles.erase(projectile);
-                    break;
-                }
+        if (projectile.getNextMove() > SDL_GetTicks64())
+            continue;
+        projectile.move();
     }
+
+    updateProjectiles();
 
     SDL_Event e;
     SDL_PollEvent(&e);
@@ -125,7 +104,7 @@ void Game::render()
     SDL_SetRenderDrawColor(ren, 40, 40, 40, 0);
     SDL_RenderClear(ren);
 
-    // render walls and player
+    // render walls, scrap and player
     SDL_SetRenderDrawColor(ren, 0, 0, 0, 0);
     for (int x = 0; x < cells_count; x++)
     {
@@ -139,7 +118,11 @@ void Game::render()
             case CELL_WALL: // walls
                 SDL_RenderFillRect(ren, &cell_rect);
                 break;
+            case CELL_SCRAP:
+                SDL_RenderCopy(ren, tex_scrap, nullptr, &cell_rect);
+                break;
             case CELL_PLAYER: // player
+                std::cout << "render player " << x << " " << y << std::endl;
                 SDL_RenderCopyEx(ren, tex_tank1, nullptr, &cell_rect, player.getRotating(), nullptr, SDL_FLIP_NONE);
                 break;
             }
@@ -244,7 +227,40 @@ void Game::tankFire(Tank& tank)
         break;
     }
     projectiles.push_back({ x, y, direction });
+    updateProjectiles();
 
     // tank reloading
     tank.setNextFire(SDL_GetTicks64() + 1000);
+}
+
+void Game::updateProjectiles()
+{
+    for (auto projectile = projectiles.begin(); projectile != projectiles.end(); projectile++)
+    {
+        int x = projectile->getX(), y = projectile->getY();
+
+        // delete projectile if it left the map or on collision with wall
+        if ((x < 0 || x > cells_count - 1 || y < 0 || y > cells_count - 1) || (cells[x][y] == CELL_WALL))
+        {
+            projectile = projectiles.erase(projectile);
+            break;
+        }
+
+        if (x == player.getX() && y == player.getY()) // collision with player tank
+        {
+            health--;
+            projectile = projectiles.erase(projectile);
+        }
+        else
+            for (auto enemy = enemies.begin(); enemy != enemies.end(); enemy++)
+                if (x == enemy->getX() && y == enemy->getY()) // collision with enemy tank
+                {
+                    enemy = enemies.erase(enemy);
+                    cells[x][y] = CELL_SCRAP;
+                    projectile = projectiles.erase(projectile);
+                    break;
+                }
+        if (projectile == projectiles.end())
+            break;
+    }
 }
