@@ -10,8 +10,10 @@ Game::Game(int cells_count): cells_count(cells_count), player(rand() % cells_cou
     keys = SDL_GetKeyboardState(nullptr);
 
     // textures loading
-    tank1 = IMG_LoadTexture(ren, "images/tank1.png");
-    tank2 = IMG_LoadTexture(ren, "images/tank2.png");
+    tex_tank1 = IMG_LoadTexture(ren, "images/tank1.png");
+    tex_tank2 = IMG_LoadTexture(ren, "images/tank2.png");
+    tex_health = IMG_LoadTexture(ren, "images/health.png");
+    SDL_SetTextureAlphaMod(tex_health, 128);
     
     cells = new int* [cells_count];
     for (int i = 0; i < cells_count; i++)
@@ -102,24 +104,34 @@ void Game::render()
                 SDL_RenderFillRect(ren, &cell_rect);
                 break;
             case CELL_PLAYER: // player
-                SDL_RenderCopyEx(ren, tank1, nullptr, &cell_rect, player.getRotating(), nullptr, SDL_FLIP_NONE);
+                SDL_RenderCopyEx(ren, tex_tank1, nullptr, &cell_rect, player.getRotating(), nullptr, SDL_FLIP_NONE);
                 break;
             }
             cell_rect.y += 25;
         }
     }
+
+    // render enemies
     for (auto& enemy : enemies)
     {
         SDL_Rect cell_rect{ enemy.getX() * 25, enemy.getY() * 25, 25, 25 };
-        SDL_RenderCopy(ren, tank2, nullptr, &cell_rect);
+        SDL_RenderCopy(ren, tex_tank2, nullptr, &cell_rect);
     }
 
-    // render lines
+    // render grid
     SDL_SetRenderDrawColor(ren, 60, 60, 60, 0);
     for (int x = 0; x < cells_count; x++)
     {
         SDL_RenderDrawLine(ren, x * 25, 0, x * 25, 800);
         SDL_RenderDrawLine(ren, 0, x * 25, 800, x * 25);
+    }
+
+    // render health points
+    SDL_Rect dstrect{ 0, 0, 25, 25 };
+    for (int i = 0; i < health; i++)
+    {
+        dstrect.x = i * 30;
+        SDL_RenderCopy(ren, tex_health, nullptr, &dstrect);
     }
 
     SDL_RenderPresent(ren);

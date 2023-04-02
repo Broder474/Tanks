@@ -23,7 +23,7 @@ public:
 private:
 	SDL_Window* win;
 	SDL_Renderer* ren;
-	SDL_Texture* tank1, *tank2;
+	SDL_Texture *tex_tank1, *tex_tank2, *tex_health;
 	bool isRunned = false;
 	int** cells;
 	int cells_count;
