@@ -15,7 +15,10 @@ public:
 	void addY(int y);
 	int getRotating() { return rotating; }
 	Uint64 getNextMove() { return next_move; }
+	Uint64 getNextFire() { return next_fire; }
+	void setNextFire(Uint64 next_fire) { this->next_fire = next_fire; }
 private:
 	int x = 0, y = 0, rotating = 0;
-	Uint64 next_move; // next time when tank will can to move
+	Uint64 next_move; // next time when the tank can move
+	Uint64 next_fire; // next time when the tank can shoot
 };

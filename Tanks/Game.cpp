@@ -14,6 +14,7 @@ Game::Game(int cells_count): cells_count(cells_count), player(rand() % cells_cou
     tex_tank2 = IMG_LoadTexture(ren, "images/tank2.png");
     tex_health = IMG_LoadTexture(ren, "images/health.png");
     SDL_SetTextureAlphaMod(tex_health, 128);
+    tex_projectile = IMG_LoadTexture(ren, "images/projectile.png");
     
     cells = new int* [cells_count];
     for (int i = 0; i < cells_count; i++)
@@ -31,7 +32,7 @@ Game::Game(int cells_count): cells_count(cells_count), player(rand() % cells_cou
     cells[player.getX()][player.getY()] = CELL_PLAYER;
 
     // spawn enemies
-    for (int i = 1; i < 1 + rand() % 10; i++)
+    for (int i = 0; i < 1 + rand() % 10; i++)
     {
         int x, y;
         while (true)
@@ -43,8 +44,7 @@ Game::Game(int cells_count): cells_count(cells_count), player(rand() % cells_cou
                 break;
             }
         }
-        Tank tank(x, y);
-        enemies.push_back(tank);
+        enemies.push_back({x, y});
     }
     
 
@@ -65,6 +65,7 @@ void Game::loop()
 
 void Game::handleEvents()
 {
+    // player tank moving
     if (keys[SDL_SCANCODE_W])
         moveTankY(player, CELL_PLAYER, -1);
     else if (keys[SDL_SCANCODE_S])
@@ -73,6 +74,41 @@ void Game::handleEvents()
         moveTankX(player, CELL_PLAYER, -1);
     else if (keys[SDL_SCANCODE_D])
         moveTankX(player, CELL_PLAYER, 1);
+    else if (keys[SDL_SCANCODE_SPACE])
+        tankFire(player);
+
+    // update flying projectiles
+    for (auto projectile = projectiles.begin(); projectile != projectiles.end(); projectile++)
+    {
+        if (projectile->getNextMove() > SDL_GetTicks64())
+            return;
+        // move projectile
+        projectile->move();
+
+        int x = projectile->getX(), y = projectile->getY();
+
+        // delete projectile if it left the map
+        if (x < 0 || x > cells_count - 1 || y < 0 || y > cells_count - 1)
+        {
+            projectiles.erase(projectile);
+            break;
+        }
+
+        if (x == player.getX() && y == player.getY()) // collision with player tank
+        {
+            health--;
+            projectiles.erase(projectile);
+        }
+        else
+            for (auto enemy = enemies.begin(); enemy != enemies.end(); enemy++)
+                if (x == enemy->getX() && y == enemy->getY()) // collision with enemy tank
+                {
+                    enemies.erase(enemy);
+                    cells[x][y] = CELL_SCRAP;
+                    projectiles.erase(projectile);
+                    break;
+                }
+    }
 
     SDL_Event e;
     SDL_PollEvent(&e);
@@ -116,6 +152,13 @@ void Game::render()
     {
         SDL_Rect cell_rect{ enemy.getX() * 25, enemy.getY() * 25, 25, 25 };
         SDL_RenderCopy(ren, tex_tank2, nullptr, &cell_rect);
+    }
+
+    // render flying projectils
+    for (auto& projectile : projectiles)
+    {
+        SDL_Rect dstrect{ projectile.getX() * 25, projectile.getY() * 25, 25, 25 };
+        SDL_RenderCopy(ren, tex_projectile, nullptr, &dstrect);
     }
 
     // render grid
@@ -173,4 +216,35 @@ void Game::moveTankY(Tank& tank, int tank_team, int y)
         cells[x2][y2] = tank_team;
         tank.addY(y);
     }
+}
+
+void Game::tankFire(Tank& tank)
+{
+    if (tank.getNextFire() > SDL_GetTicks64())
+        return;
+
+    int x = tank.getX(), y = tank.getY(), direction = Projectile::TOP;
+    switch (tank.getRotating())
+    {
+    case 0:
+        direction = Projectile::TOP;
+        y--;
+        break;
+    case 90:
+        direction = Projectile::RIGHT;
+        x++;
+        break;
+    case 180:
+        direction = Projectile::BOTTOM;
+        y++;
+        break;
+    case 270:
+        direction = Projectile::LEFT;
+        x--;
+        break;
+    }
+    projectiles.push_back({ x, y, direction });
+
+    // tank reloading
+    tank.setNextFire(SDL_GetTicks64() + 1000);
 }
