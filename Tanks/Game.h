@@ -16,6 +16,8 @@ public:
 	void quit();
 	void handleEvents();
 	void render();
+	void moveTankX(Tank& tank, int tank_team, int x);
+	void moveTankY(Tank& tank, int tank_team, int y);
 	std::list<Tank>enemies;
 	Tank player;
 private:
@@ -26,4 +28,5 @@ private:
 	int** cells;
 	int cells_count;
 	int health = 3;
+	const Uint8* keys;
 };
