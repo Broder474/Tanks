@@ -96,8 +96,6 @@ void Game::handleEvents()
     // player tank shooting
     if (keys[SDL_SCANCODE_SPACE])
         tankFire(player);
-    else if (keys[SDL_SCANCODE_ESCAPE])
-        health--;
 
     // projectiles moving
     for (auto& projectile : projectiles)
