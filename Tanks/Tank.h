@@ -3,6 +3,7 @@
 class Tank
 {
 public:
+	Tank();
 	Tank(int x, int y);
 	~Tank();
 	int getX() { return x; }
@@ -10,5 +11,5 @@ public:
 	int getY() { return y; }
 	void setY(int y) { this->y = y; }
 private:
-	int x = 0, y = 0;
+	int x = 0, y = 0, rotate = 0;
 };
