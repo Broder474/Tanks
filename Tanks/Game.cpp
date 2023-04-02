@@ -4,18 +4,28 @@ Game::Game(int cells_count): cells_count(cells_count), player(rand() % cells_cou
 {
     srand(time(0));
     SDL_Init(SDL_INIT_EVERYTHING);
+    TTF_Init();
     win = SDL_CreateWindow("Tanks", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 800, SDL_WINDOW_SHOWN);
     ren = SDL_CreateRenderer(win, -1, 0);
 
     keys = SDL_GetKeyboardState(nullptr);
 
-    // textures loading
+    // image textures loading
     tex_tank1 = IMG_LoadTexture(ren, "images/tank1.png");
     tex_tank2 = IMG_LoadTexture(ren, "images/tank2.png");
     tex_health = IMG_LoadTexture(ren, "images/health.png");
     SDL_SetTextureAlphaMod(tex_health, 128);
     tex_projectile = IMG_LoadTexture(ren, "images/projectile.png");
     tex_scrap = IMG_LoadTexture(ren, "images/scrap.png");
+
+    font = TTF_OpenFont("fonts/calibri.ttf", 32);
+
+    // text textures
+    SDL_Color color{ 0, 255, 0, 0 };
+    tex_won = CreateTextureFromText(ren, font, "You won!", color);
+    SDL_QueryTexture(tex_won, nullptr, nullptr, &dstrect_won.w, &dstrect_won.h);
+    tex_lost = CreateTextureFromText(ren, font, "You lost...", color);
+    SDL_QueryTexture(tex_lost, nullptr, nullptr, &dstrect_lost.w, &dstrect_lost.h);
 
     cells = new int* [cells_count];
     for (int i = 0; i < cells_count; i++)
@@ -59,7 +69,15 @@ void Game::loop()
     {
         SDL_Delay(50);
         render();
-        handleEvents();
+        if (health > 0 && enemies.size() != 0)
+            handleEvents();
+        else
+        {
+            SDL_Event e;
+            SDL_PollEvent(&e);
+            if (e.type == SDL_QUIT)
+                quit();
+        }
     }
 }
 
@@ -78,6 +96,8 @@ void Game::handleEvents()
     // player tank shooting
     if (keys[SDL_SCANCODE_SPACE])
         tankFire(player);
+    else if (keys[SDL_SCANCODE_ESCAPE])
+        health--;
 
     // projectiles moving
     for (auto& projectile : projectiles)
@@ -122,7 +142,6 @@ void Game::render()
                 SDL_RenderCopy(ren, tex_scrap, nullptr, &cell_rect);
                 break;
             case CELL_PLAYER: // player
-                std::cout << "render player " << x << " " << y << std::endl;
                 SDL_RenderCopyEx(ren, tex_tank1, nullptr, &cell_rect, player.getRotating(), nullptr, SDL_FLIP_NONE);
                 break;
             }
@@ -160,6 +179,13 @@ void Game::render()
         SDL_RenderCopy(ren, tex_health, nullptr, &dstrect);
     }
 
+    // Game over 
+    if (health < 1 || enemies.size() == 0)
+        if (health < 1)
+            SDL_RenderCopy(ren, tex_lost, nullptr, &dstrect_lost);
+        else
+            SDL_RenderCopy(ren, tex_won, nullptr, &dstrect_won);
+
     SDL_RenderPresent(ren);
 }
 
@@ -170,6 +196,7 @@ void Game::quit()
     delete[] cells;
 
     isRunned = false;
+    TTF_CloseFont(font);
     SDL_DestroyRenderer(ren);
     SDL_DestroyWindow(win);
     SDL_Quit();
@@ -263,4 +290,12 @@ void Game::updateProjectiles()
         if (projectile == projectiles.end())
             break;
     }
+}
+
+SDL_Texture* CreateTextureFromText(SDL_Renderer* ren, TTF_Font* font, const char* text, SDL_Color color)
+{
+    SDL_Surface* surf = TTF_RenderUTF8_Blended(font, text, color);
+    SDL_Texture* tex = SDL_CreateTextureFromSurface(ren, surf);
+    SDL_FreeSurface(surf);
+    return tex;
 }
