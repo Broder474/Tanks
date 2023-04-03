@@ -39,4 +39,10 @@ private:
 	const Uint8* keys;
 };
 
+struct Position
+{
+	Position(int x, int y) : x(x), y(y) {};
+	int x, y;
+};
+
 SDL_Texture* CreateTextureFromText(SDL_Renderer* ren, TTF_Font* font, const char* text, SDL_Color color);

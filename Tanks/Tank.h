@@ -14,6 +14,7 @@ public:
 	void addX(int x);
 	void addY(int y);
 	int getRotating() { return rotating; }
+	void setRotating(int rotating) { this->rotating = rotating; }
 	Uint64 getNextMove() { return next_move; }
 	Uint64 getNextFire() { return next_fire; }
 	void setNextFire(Uint64 next_fire) { this->next_fire = next_fire; }

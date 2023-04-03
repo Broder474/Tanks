@@ -105,6 +105,29 @@ void Game::handleEvents()
         projectile.move();
     }
 
+    // enemy tanks AI
+    std::list<Position>fire_positions;
+    int target_x = player.getX(), target_y = player.getY();
+    // top direction
+    for (int y = target_y; y > -1 && cells[target_x][y] != CELL_WALL; y--)
+        if (cells[target_x][y] == CELL_EMPTY)
+            fire_positions.push_back({ target_x, y });
+
+    // bottom direction
+    for (int y = target_y; cells[target_x][y] != CELL_WALL && y < cells_count; y++)
+        if (cells[target_x][y] == CELL_EMPTY)
+            fire_positions.push_back({ target_x, y });
+
+    // left direction
+    for (int x = target_x; x > -1 && cells[x][target_y] != CELL_WALL; x--)
+        if (cells[x][target_y] == CELL_EMPTY)
+            fire_positions.push_back({ x, target_y });
+
+    // right direction
+    for (int x = target_x; x < cells_count && cells[x][target_y] != CELL_WALL; x++)
+        if (cells[x][target_y] == CELL_EMPTY)
+            fire_positions.push_back({ x, target_y });
+
     updateProjectiles();
 
     SDL_Event e;
@@ -211,6 +234,7 @@ void Game::moveTankX(Tank& tank, int tank_team, int x)
         cells[x2][y2] = tank_team;
         tank.addX(x);
     }
+    x > 0 ? tank.setRotating(90) : tank.setRotating(270);
 }
 
 void Game::moveTankY(Tank& tank, int tank_team, int y)
@@ -224,6 +248,7 @@ void Game::moveTankY(Tank& tank, int tank_team, int y)
         cells[x2][y2] = tank_team;
         tank.addY(y);
     }
+    y > 0 ? tank.setRotating(180) : tank.setRotating(0);
 }
 
 void Game::tankFire(Tank& tank)
