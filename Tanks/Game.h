@@ -5,6 +5,8 @@
 #include <SDL_image.h>
 #include <SDL_ttf.h>
 #include <list>
+#include <set>
+#include <algorithm>
 #include "Tank.h"
 #include "Projectile.h"
 
@@ -43,6 +45,28 @@ struct Position
 {
 	Position(int x, int y) : x(x), y(y) {};
 	int x, y;
+	bool operator==(const Position& pos)
+	{
+		return (this->x == pos.x && this->y == pos.y);
+	}
+	bool operator!=(const Position& pos)
+	{
+		return !(this->x == pos.x && this->y == pos.y);
+	}
+};
+
+struct Node
+{
+	Node(Position pos, Node* prev) : pos(pos), prev(prev) {};
+	Position* generateNext(Node& basic, int cells_count, int** map, std::list<Position>firepos);
+	void findWay(Position pos, std::list<Position>&way);
+	int getTotalNodesAmount();
+	void delete_repeats(std::list<Node>& temp_nodes);
+
+	Node* prev;
+	Position pos;
+	std::list<Node>nodes;
+	bool generated = false;
 };
 
 SDL_Texture* CreateTextureFromText(SDL_Renderer* ren, TTF_Font* font, const char* text, SDL_Color color);

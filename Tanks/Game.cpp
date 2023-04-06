@@ -83,15 +83,30 @@ void Game::loop()
 
 void Game::handleEvents()
 {
-    // player tank moving
-    if (keys[SDL_SCANCODE_W])
-        moveTankY(player, CELL_PLAYER, -1);
-    else if (keys[SDL_SCANCODE_S])
-        moveTankY(player, CELL_PLAYER, 1);
-    else if (keys[SDL_SCANCODE_A])
-        moveTankX(player, CELL_PLAYER, -1);
-    else if (keys[SDL_SCANCODE_D])
-        moveTankX(player, CELL_PLAYER, 1);
+    if (keys[SDL_SCANCODE_LSHIFT])
+    {
+        // player tank rotating
+        if (keys[SDL_SCANCODE_W])
+            player.setRotating(0);
+        else if (keys[SDL_SCANCODE_S])
+            player.setRotating(180);
+        else if (keys[SDL_SCANCODE_A])
+            player.setRotating(270);
+        else if (keys[SDL_SCANCODE_D])
+            player.setRotating(90);
+    }
+    else
+    {
+        // player tank moving
+        if (keys[SDL_SCANCODE_W])
+            moveTankY(player, CELL_PLAYER, -1);
+        else if (keys[SDL_SCANCODE_S])
+            moveTankY(player, CELL_PLAYER, 1);
+        else if (keys[SDL_SCANCODE_A])
+            moveTankX(player, CELL_PLAYER, -1);
+        else if (keys[SDL_SCANCODE_D])
+            moveTankX(player, CELL_PLAYER, 1);
+    }
 
     // player tank shooting
     if (keys[SDL_SCANCODE_SPACE])
@@ -105,28 +120,88 @@ void Game::handleEvents()
         projectile.move();
     }
 
-    // enemy tanks AI
-    std::list<Position>fire_positions;
-    int target_x = player.getX(), target_y = player.getY();
-    // top direction
-    for (int y = target_y; y > -1 && cells[target_x][y] != CELL_WALL; y--)
-        if (cells[target_x][y] == CELL_EMPTY)
-            fire_positions.push_back({ target_x, y });
+    for (auto& enemy : enemies)
+        if (enemy.getNextMove() < SDL_GetTicks64() && abs(player.getX() - enemy.getX()) < 10 && abs(player.getY() - enemy.getY()) < 10)
+        {
+            std::list<Position>fire_positions;
+            int target_x = player.getX(), target_y = player.getY();
+            int enemy_x = enemy.getX(), enemy_y = enemy.getY();
 
-    // bottom direction
-    for (int y = target_y; cells[target_x][y] != CELL_WALL && y < cells_count; y++)
-        if (cells[target_x][y] == CELL_EMPTY)
-            fire_positions.push_back({ target_x, y });
+            // update available fire positions
+            // top direction
+            for (int y = target_y; y > -1 && cells[target_x][y] != CELL_WALL; y--)
+                if (cells[target_x][y] == CELL_EMPTY || (target_x == enemy_x && y == enemy_y))
+                    fire_positions.push_back({ target_x, y });
 
-    // left direction
-    for (int x = target_x; x > -1 && cells[x][target_y] != CELL_WALL; x--)
-        if (cells[x][target_y] == CELL_EMPTY)
-            fire_positions.push_back({ x, target_y });
+            // bottom direction
+            for (int y = target_y; cells[target_x][y] != CELL_WALL && y < cells_count; y++)
+                if (cells[target_x][y] == CELL_EMPTY || (target_x == enemy_x && y == enemy_y))
+                    fire_positions.push_back({ target_x, y });
 
-    // right direction
-    for (int x = target_x; x < cells_count && cells[x][target_y] != CELL_WALL; x++)
-        if (cells[x][target_y] == CELL_EMPTY)
-            fire_positions.push_back({ x, target_y });
+            // left direction
+            for (int x = target_x; x > -1 && cells[x][target_y] != CELL_WALL; x--)
+                if (cells[x][target_y] == CELL_EMPTY || (x == enemy_x && target_y == enemy_y))
+                    fire_positions.push_back({ x, target_y });
+
+            // right direction
+            for (int x = target_x; x < cells_count && cells[x][target_y] != CELL_WALL; x++)
+                if (cells[x][target_y] == CELL_EMPTY || (x == enemy_x && target_y == enemy_y))
+                    fire_positions.push_back({ x, target_y });
+
+            Node start({ enemy.getX(), enemy.getY() }, nullptr);
+            Position* firepos = nullptr;
+
+            // check if the tank is on the fire position
+            for (auto& pos : fire_positions)
+                if (start.pos == pos)
+                    firepos = &pos;
+
+            // searching the nearest fire position
+            while (firepos == nullptr)
+                firepos = start.generateNext(start, cells_count, cells, fire_positions);
+
+            // way creating
+            std::list<Position>way;
+            start.findWay(*firepos, way);
+            if (way.size())
+                way.pop_front(); // remove start position
+            else
+            {
+                // rotate enemy tank to player
+                int diff_x = enemy_x - target_x, diff_y = enemy_y - target_y;
+                auto rotate_and_fire = [](Tank& tank, int rotating) {
+                    if (tank.getRotating() == rotating)
+                        return;
+                    tank.setRotating(rotating);
+                    Uint64 curr_time = SDL_GetTicks64();
+                    if (tank.getNextFire() <= curr_time)
+                        tank.setNextFire(curr_time + 750);
+                };
+
+                if (diff_x > 0)
+                    rotate_and_fire(enemy, 270);
+                else if (diff_x < 0)
+                    rotate_and_fire(enemy, 90);
+                else if (diff_y > 0)
+                    rotate_and_fire(enemy, 0);
+                else if (diff_y < 0)
+                    rotate_and_fire(enemy, 180);
+
+                // enemy tank fire
+                if (enemy.getNextFire() <= SDL_GetTicks64())
+                    tankFire(enemy);
+            }
+            if (way.size())
+            {
+                // enemy tank moving
+                int diff_x = way.front().x - enemy_x, diff_y = way.front().y - enemy_y;
+                if (diff_x ^ diff_y)
+                    if (diff_x)
+                        moveTankX(enemy, CELL_ENEMY, diff_x);
+                    else if (diff_y)
+                        moveTankY(enemy, CELL_ENEMY, diff_y);
+            }
+        }
 
     updateProjectiles();
 
@@ -174,7 +249,7 @@ void Game::render()
     for (auto& enemy : enemies)
     {
         SDL_Rect cell_rect{ enemy.getX() * 25, enemy.getY() * 25, 25, 25 };
-        SDL_RenderCopy(ren, tex_tank2, nullptr, &cell_rect);
+        SDL_RenderCopyEx(ren, tex_tank2, nullptr, &cell_rect, enemy.getRotating(), nullptr, SDL_FLIP_NONE);
     }
 
     // render flying projectils
@@ -313,6 +388,89 @@ void Game::updateProjectiles()
         if (projectile == projectiles.end())
             break;
     }
+}
+
+Position* Node::generateNext(Node& basic, int cells_count, int** map, std::list<Position>firepos)
+{
+    Position* found_pos = nullptr;
+    if (!generated)
+    {
+        std::list<Node>temp_nodes;
+        if (pos.x - 1 > -1 && map[pos.x - 1][pos.y] == Game::CELL_EMPTY)
+            temp_nodes.push_back({ {pos.x - 1, pos.y}, this });
+        if (pos.x + 1 < cells_count && map[pos.x + 1][pos.y] == Game::CELL_EMPTY)
+            temp_nodes.push_back({ { pos.x + 1, pos.y }, this });
+        if (pos.y - 1 > -1 && map[pos.x][pos.y - 1] == Game::CELL_EMPTY)
+            temp_nodes.push_back({ { pos.x, pos.y - 1 }, this });
+        if (pos.y + 1 < cells_count && map[pos.x][pos.y + 1] == Game::CELL_EMPTY)
+            temp_nodes.push_back({ { pos.x, pos.y + 1 }, this });
+
+        // delete repeating nodes
+        basic.delete_repeats(temp_nodes);
+
+        for (auto& node : temp_nodes)
+            nodes.push_back(node);
+        generated = true;
+
+        for (auto& node : nodes)
+            if (std::find(firepos.begin(), firepos.end(), node.pos) != firepos.end())
+                return &node.pos;
+    }
+    else
+        for (auto& node : nodes)
+        {
+            found_pos = node.generateNext(basic, cells_count, map, firepos);
+            if (found_pos != nullptr)
+                return found_pos;
+        }
+    return nullptr;
+}
+
+int Node::getTotalNodesAmount()
+{
+    int amount = nodes.size();
+    for (auto& node : nodes)
+        if (node.generated)
+            amount += node.getTotalNodesAmount();
+    return amount;
+}
+
+void Node::delete_repeats(std::list<Node>& temp_nodes)
+{
+    if (!generated)
+        return;
+    for (auto it = temp_nodes.begin(); it != temp_nodes.end(); it++)
+    {
+        if (std::find_if(nodes.begin(), nodes.end(), [&](Node node) {
+            return (node.pos.x == it->pos.x && node.pos.y == it->pos.y);
+            }) != nodes.end())
+        {
+            it = temp_nodes.erase(it);
+            if (it == temp_nodes.end())
+                break;
+        }
+    }
+    for (auto& node : nodes)
+        node.delete_repeats(temp_nodes);
+}
+
+void Node::findWay(Position pos, std::list<Position>&way)
+{
+    for (auto& node : nodes)
+        if (node.pos == pos)
+        {
+            way.insert(way.end(), { this->pos, node.pos });
+            break;
+        }
+        else
+        {
+            node.findWay(pos, way);
+            if (way.size())
+            {
+                way.push_front(this->pos);
+                break;
+            }
+        }
 }
 
 SDL_Texture* CreateTextureFromText(SDL_Renderer* ren, TTF_Font* font, const char* text, SDL_Color color)
