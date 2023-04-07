@@ -148,7 +148,7 @@ void Game::handleEvents()
                 if (cells[x][target_y] == CELL_EMPTY || (x == enemy_x && target_y == enemy_y))
                     fire_positions.push_back({ x, target_y });
 
-            Node start({ enemy.getX(), enemy.getY() }, nullptr);
+            Node start({ enemy_x, enemy_y }, nullptr);
             Position* firepos = nullptr;
 
             // check if the tank is on the fire position
@@ -195,11 +195,10 @@ void Game::handleEvents()
             {
                 // enemy tank moving
                 int diff_x = way.front().x - enemy_x, diff_y = way.front().y - enemy_y;
-                if (diff_x ^ diff_y)
-                    if (diff_x)
-                        moveTankX(enemy, CELL_ENEMY, diff_x);
-                    else if (diff_y)
-                        moveTankY(enemy, CELL_ENEMY, diff_y);
+                if (diff_x)
+                    moveTankX(enemy, CELL_ENEMY, diff_x);
+                else if (diff_y)
+                    moveTankY(enemy, CELL_ENEMY, diff_y);
             }
         }
 
@@ -309,7 +308,7 @@ void Game::moveTankX(Tank& tank, int tank_team, int x)
         cells[x2][y2] = tank_team;
         tank.addX(x);
     }
-    x > 0 ? tank.setRotating(90) : tank.setRotating(270);
+    tank.setRotating(x > 0 ? 90 : 270);
 }
 
 void Game::moveTankY(Tank& tank, int tank_team, int y)
@@ -323,7 +322,7 @@ void Game::moveTankY(Tank& tank, int tank_team, int y)
         cells[x2][y2] = tank_team;
         tank.addY(y);
     }
-    y > 0 ? tank.setRotating(180) : tank.setRotating(0);
+    tank.setRotating(y > 0 ? 180 : 0);
 }
 
 void Game::tankFire(Tank& tank)
@@ -442,7 +441,7 @@ void Node::delete_repeats(std::list<Node>& temp_nodes)
     for (auto it = temp_nodes.begin(); it != temp_nodes.end(); it++)
     {
         if (std::find_if(nodes.begin(), nodes.end(), [&](Node node) {
-            return (node.pos.x == it->pos.x && node.pos.y == it->pos.y);
+            return (node.pos == it->pos);
             }) != nodes.end())
         {
             it = temp_nodes.erase(it);
