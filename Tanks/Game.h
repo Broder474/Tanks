@@ -1,5 +1,3 @@
-#pragma once
-
 #include <iostream>
 #include <SDL.h>
 #include <SDL_image.h>
@@ -9,6 +7,7 @@
 #include <algorithm>
 #include "Tank.h"
 #include "Projectile.h"
+#include "Position.h"
 
 class Game
 {
@@ -39,20 +38,6 @@ private:
 	int cells_count;
 	int health = 3;
 	const Uint8* keys;
-};
-
-struct Position
-{
-	Position(int x, int y) : x(x), y(y) {};
-	int x, y;
-	bool operator==(const Position& pos)
-	{
-		return (this->x == pos.x && this->y == pos.y);
-	}
-	bool operator!=(const Position& pos)
-	{
-		return !(this->x == pos.x && this->y == pos.y);
-	}
 };
 
 struct Node
